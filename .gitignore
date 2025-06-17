@@ -1,0 +1,26 @@
+# Build artifacts
+obj/
+bin/
+*.o
+*.a
+*.so
+
+# Binaries
+ssdsplash
+ssdsplash-send
+
+# Test files
+test-*.png
+test-*.jpg
+*.ttf
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Debug files
+core
+*.log

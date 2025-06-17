@@ -1,0 +1,20 @@
+[Unit]
+Description=SSD1306 OLED Splash Screen Daemon
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ssdsplash
+# For alternate I2C address:
+# ExecStart=/usr/bin/ssdsplash -a 0x3D
+ExecStop=/usr/bin/ssdsplash-send -t quit
+Restart=no
+User=root
+Group=root
+
+# Early boot service
+DefaultDependencies=no
+Before=basic.target
+
+[Install]
+WantedBy=sysinit.target
