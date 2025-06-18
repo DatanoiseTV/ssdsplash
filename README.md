@@ -174,6 +174,42 @@ COUNT=$(ls /var/log/*.log | wc -l)
 ssdsplash-send -t text "Log files: %d" "$COUNT"
 ```
 
+### Multiline Text Support
+
+Both bitmap and TrueType fonts support multiline text using `\n` characters:
+
+**Basic multiline:**
+```bash
+# Simple multiline text
+ssdsplash-send -t text "Line 1\nLine 2\nLine 3"
+
+# Multiline with formatting
+SERVICE="nginx"
+STATUS="running"
+PID=1234
+ssdsplash-send -t text "Service: %s\nStatus: %s\nPID: %d" "$SERVICE" "$STATUS" "$PID"
+```
+
+**System information display:**
+```bash
+# Multi-line system status
+HOSTNAME=$(hostname)
+UPTIME=$(uptime | cut -d' ' -f4-5)
+LOAD=$(uptime | awk -F'load average:' '{print $2}' | cut -d',' -f1)
+ssdsplash-send -t text "Host: %s\nUptime: %s\nLoad: %s" "$HOSTNAME" "$UPTIME" "$LOAD"
+
+# Error reporting
+ERROR_CODE=404
+ERROR_MSG="Not Found"
+ssdsplash-send -t text "Error %d:\n%s\nCheck logs" "$ERROR_CODE" "$ERROR_MSG"
+```
+
+**Features:**
+- **Automatic line wrapping**: Long lines wrap to next line when reaching display width
+- **Dynamic sizing**: Works with all display sizes (128x64, 128x32, 240x320)
+- **Font compatibility**: Works with both bitmap fonts (8px height) and TrueType fonts
+- **Boundary handling**: Text stops at display height boundary
+
 ## Integration with Boot Scripts
 
 Add to your boot scripts or systemd services:

@@ -2,6 +2,7 @@
 #include <string.h>
 
 extern void display_draw_pixel(int x, int y, bool on);
+extern display_config_t current_config;
 
 static const uint8_t font_5x7[][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // space
@@ -113,8 +114,24 @@ void display_draw_char(char c, int x, int y) {
 
 void display_draw_text(const char *text, int x, int y) {
     int cur_x = x;
-    while (*text && cur_x < 128) {
-        display_draw_char(*text, cur_x, y);
+    int cur_y = y;
+    
+    while (*text) {
+        if (*text == '\n') {
+            cur_x = x;
+            cur_y += 8;
+            text++;
+            continue;
+        }
+        
+        if (cur_x >= current_config.width) {
+            cur_x = x;
+            cur_y += 8;
+        }
+        
+        if (cur_y >= current_config.height) break;
+        
+        display_draw_char(*text, cur_x, cur_y);
         cur_x += 6;
         text++;
     }
