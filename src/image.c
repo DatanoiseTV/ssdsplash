@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern void ssd1306_draw_pixel(int x, int y, bool on);
+extern void display_draw_pixel(int x, int y, bool on);
 extern display_config_t current_config;
 
 static uint8_t rgb_to_gray(uint8_t r, uint8_t g, uint8_t b) {
@@ -24,7 +24,7 @@ static uint8_t dither_threshold(int x, int y, uint8_t gray) {
     return gray > threshold ? 255 : 0;
 }
 
-int ssd1306_load_and_display_image(const char *filename) {
+int display_load_and_display_image(const char *filename) {
     int width, height, channels;
     unsigned char *img_data = stbi_load(filename, &width, &height, &channels, 0);
     
@@ -35,7 +35,7 @@ int ssd1306_load_and_display_image(const char *filename) {
     
     printf("Loaded image: %dx%d, channels: %d\n", width, height, channels);
     
-    ssd1306_clear();
+    display_clear();
     
     int start_x = (current_config.width - width) / 2;
     int start_y = (current_config.height - height) / 2;
@@ -65,17 +65,17 @@ int ssd1306_load_and_display_image(const char *filename) {
             uint8_t gray = rgb_to_gray(r, g, b);
             uint8_t dithered = dither_threshold(start_x + x, start_y + y, gray);
             
-            ssd1306_draw_pixel(start_x + x, start_y + y, dithered > 127);
+            display_draw_pixel(start_x + x, start_y + y, dithered > 127);
         }
     }
     
     stbi_image_free(img_data);
-    ssd1306_display();
+    display_update();
     
     return 0;
 }
 
-int ssd1306_load_and_display_image_scaled(const char *filename) {
+int display_load_and_display_image_scaled(const char *filename) {
     int width, height, channels;
     unsigned char *img_data = stbi_load(filename, &width, &height, &channels, 0);
     
@@ -86,7 +86,7 @@ int ssd1306_load_and_display_image_scaled(const char *filename) {
     
     printf("Loaded image: %dx%d, channels: %d\n", width, height, channels);
     
-    ssd1306_clear();
+    display_clear();
     
     float scale_x = (float)current_config.width / width;
     float scale_y = (float)current_config.height / height;
@@ -128,12 +128,12 @@ int ssd1306_load_and_display_image_scaled(const char *filename) {
             uint8_t gray = rgb_to_gray(r, g, b);
             uint8_t dithered = dither_threshold(start_x + x, start_y + y, gray);
             
-            ssd1306_draw_pixel(start_x + x, start_y + y, dithered > 127);
+            display_draw_pixel(start_x + x, start_y + y, dithered > 127);
         }
     }
     
     stbi_image_free(img_data);
-    ssd1306_display();
+    display_update();
     
     return 0;
 }

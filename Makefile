@@ -6,7 +6,7 @@ SRCDIR = src
 OBJDIR = obj
 BINDIR = bin
 
-DAEMON_SOURCES = $(SRCDIR)/ssdsplash.c $(SRCDIR)/ssd1306.c $(SRCDIR)/font.c $(SRCDIR)/image.c $(SRCDIR)/truetype.c
+DAEMON_SOURCES = $(SRCDIR)/ssdsplash.c $(SRCDIR)/display.c $(SRCDIR)/font.c $(SRCDIR)/image.c $(SRCDIR)/truetype.c
 CLIENT_SOURCES = $(SRCDIR)/ssdsplash-send.c
 
 DAEMON_OBJECTS = $(DAEMON_SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)

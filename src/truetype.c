@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern void ssd1306_draw_pixel(int x, int y, bool on);
+extern void display_draw_pixel(int x, int y, bool on);
 extern display_config_t current_config;
 
 typedef struct {
@@ -81,15 +81,15 @@ static int load_truetype_font(const char *font_path, int font_size) {
     return 0;
 }
 
-void ssd1306_draw_text_truetype(const char *text, int x, int y, const char *font_path, int font_size) {
+void display_draw_text_truetype(const char *text, int x, int y, const char *font_path, int font_size) {
     if (!text || !font_path || strlen(font_path) == 0) {
-        ssd1306_draw_text(text, x, y);
+        display_draw_text(text, x, y);
         return;
     }
     
     if (load_truetype_font(font_path, font_size) < 0) {
         printf("Fallback to bitmap font\n");
-        ssd1306_draw_text(text, x, y);
+        display_draw_text(text, x, y);
         return;
     }
     
@@ -131,7 +131,7 @@ void ssd1306_draw_text_truetype(const char *text, int x, int y, const char *font
                         
                         unsigned char alpha = bitmap[py * width + px];
                         if (alpha > 127) {
-                            ssd1306_draw_pixel(screen_x, screen_y, true);
+                            display_draw_pixel(screen_x, screen_y, true);
                         }
                     }
                 }
@@ -150,6 +150,6 @@ void ssd1306_draw_text_truetype(const char *text, int x, int y, const char *font
     }
 }
 
-void ssd1306_cleanup_truetype(void) {
+void display_cleanup_truetype(void) {
     free_cached_font();
 }

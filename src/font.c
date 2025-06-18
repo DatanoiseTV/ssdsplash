@@ -1,7 +1,7 @@
 #include "ssdsplash.h"
 #include <string.h>
 
-extern void ssd1306_draw_pixel(int x, int y, bool on);
+extern void display_draw_pixel(int x, int y, bool on);
 
 static const uint8_t font_5x7[][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // space
@@ -97,7 +97,7 @@ static const uint8_t font_5x7[][5] = {
     {0x44, 0x64, 0x54, 0x4C, 0x44}, // z
 };
 
-void ssd1306_draw_char(char c, int x, int y) {
+void display_draw_char(char c, int x, int y) {
     if (c < 32 || c > 122) c = 32;
     int index = c - 32;
     
@@ -105,16 +105,16 @@ void ssd1306_draw_char(char c, int x, int y) {
         uint8_t line = font_5x7[index][col];
         for (int row = 0; row < 7; row++) {
             if (line & (1 << row)) {
-                ssd1306_draw_pixel(x + col, y + row, true);
+                display_draw_pixel(x + col, y + row, true);
             }
         }
     }
 }
 
-void ssd1306_draw_text(const char *text, int x, int y) {
+void display_draw_text(const char *text, int x, int y) {
     int cur_x = x;
     while (*text && cur_x < 128) {
-        ssd1306_draw_char(*text, cur_x, y);
+        display_draw_char(*text, cur_x, y);
         cur_x += 6;
         text++;
     }

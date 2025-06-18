@@ -38,7 +38,9 @@ typedef struct {
 
 typedef enum {
     DISPLAY_128x64 = 0,
-    DISPLAY_128x32 = 1
+    DISPLAY_128x32 = 1,
+    DISPLAY_ILI9341_240x320 = 2,
+    DISPLAY_SSH1106_128x64 = 3
 } display_type_t;
 
 typedef struct {
@@ -49,17 +51,17 @@ typedef struct {
 
 extern const display_config_t display_configs[];
 
-int ssd1306_init(display_type_t type, const char *i2c_device, uint8_t addr);
-void ssd1306_cleanup(void);
-void ssd1306_clear(void);
-void ssd1306_display(void);
-void ssd1306_draw_text(const char *text, int x, int y);
-void ssd1306_draw_progress_bar(int value, int max_value, int x, int y, int width, int height);
+int display_init(display_type_t type, const char *device, uint8_t addr);
+void display_cleanup(void);
+void display_clear(void);
+void display_update(void);
+void display_draw_text(const char *text, int x, int y);
+void display_draw_progress_bar(int value, int max_value, int x, int y, int width, int height);
 
-int ssd1306_load_and_display_image(const char *filename);
-int ssd1306_load_and_display_image_scaled(const char *filename);
+int display_load_and_display_image(const char *filename);
+int display_load_and_display_image_scaled(const char *filename);
 
-void ssd1306_draw_text_truetype(const char *text, int x, int y, const char *font_path, int font_size);
-void ssd1306_cleanup_truetype(void);
+void display_draw_text_truetype(const char *text, int x, int y, const char *font_path, int font_size);
+void display_cleanup_truetype(void);
 
 #endif
