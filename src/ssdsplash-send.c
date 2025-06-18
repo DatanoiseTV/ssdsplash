@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <getopt.h>
+#include <stdarg.h>
 #include "ssdsplash.h"
 
 static void show_help(const char *progname) {
@@ -19,17 +21,127 @@ static void show_help(const char *progname) {
     printf("  -l, --line LINE        Text line number (for text type, default: 0)\n");
     printf("  -s, --scaled           Scale image to fit screen (for img type)\n");
     printf("  -h, --help             Show this help\n");
-    printf("  TEXT/PATH              Text message (for text type) or image path (for img type)\n\n");
+    printf("  TEXT/PATH [ARGS...]    Text message (for text type) or image path (for img type)\n");
+    printf("                         For text: supports printf-style format strings with args\n\n");
     printf("Examples:\n");
     printf("  %s -t text \"Loading configuration...\"\n", progname);
     printf("  %s -t text -f /path/to/font.ttf -z 16 \"TrueType Text\"\n", progname);
     printf("  %s -t text -l 1 \"Starting services\"\n", progname);
+    printf("  %s -t text \"Service %%s returned %%d\" nginx 0\n", progname);
+    printf("  %s -t text \"Progress: %%d/%%d (%%0.1f%%)\" 42 100 42.0\n", progname);
     printf("  %s -t progress -v 42\n", progname);
     printf("  %s -t progress -v 50 -m 200\n", progname);
     printf("  %s -t img /path/to/logo.png\n", progname);
     printf("  %s -t img -s /path/to/splash.jpg\n", progname);
     printf("  %s -t clear\n", progname);
     printf("  %s -t quit\n", progname);
+}
+
+static int format_text_with_args(char *output, size_t output_size, const char *format, int argc, char *argv[], int start_idx) {
+    if (start_idx >= argc) {
+        strncpy(output, format, output_size - 1);
+        output[output_size - 1] = '\0';
+        return 0;
+    }
+    
+    char *temp_format = strdup(format);
+    if (!temp_format) {
+        return -1;
+    }
+    
+    char *result = malloc(output_size);
+    if (!result) {
+        free(temp_format);
+        return -1;
+    }
+    
+    char *format_ptr = temp_format;
+    char *output_ptr = result;
+    size_t remaining = output_size - 1;
+    int arg_idx = start_idx;
+    
+    while (*format_ptr && remaining > 0) {
+        if (*format_ptr == '%' && *(format_ptr + 1) != '\0') {
+            char *spec_start = format_ptr;
+            format_ptr++;
+            
+            while (*format_ptr && strchr("-+ #0123456789.*", *format_ptr)) {
+                format_ptr++;
+            }
+            
+            if (*format_ptr == '\0') {
+                break;
+            }
+            
+            char spec = *format_ptr;
+            format_ptr++;
+            
+            if (spec == '%') {
+                if (remaining > 0) {
+                    *output_ptr++ = '%';
+                    remaining--;
+                }
+            } else if (arg_idx < argc) {
+                char spec_str[32];
+                int spec_len = format_ptr - spec_start;
+                if (spec_len < (int)sizeof(spec_str)) {
+                    strncpy(spec_str, spec_start, spec_len);
+                    spec_str[spec_len] = '\0';
+                    
+                    char formatted[64];
+                    int written = 0;
+                    
+                    switch (spec) {
+                        case 'd':
+                        case 'i':
+                            written = snprintf(formatted, sizeof(formatted), spec_str, atoi(argv[arg_idx]));
+                            break;
+                        case 'u':
+                        case 'x':
+                        case 'X':
+                        case 'o':
+                            written = snprintf(formatted, sizeof(formatted), spec_str, (unsigned int)atoi(argv[arg_idx]));
+                            break;
+                        case 'f':
+                        case 'F':
+                        case 'e':
+                        case 'E':
+                        case 'g':
+                        case 'G':
+                            written = snprintf(formatted, sizeof(formatted), spec_str, atof(argv[arg_idx]));
+                            break;
+                        case 'c':
+                            written = snprintf(formatted, sizeof(formatted), spec_str, argv[arg_idx][0]);
+                            break;
+                        case 's':
+                            written = snprintf(formatted, sizeof(formatted), spec_str, argv[arg_idx]);
+                            break;
+                        default:
+                            written = snprintf(formatted, sizeof(formatted), "%%");
+                            break;
+                    }
+                    
+                    if (written > 0 && (size_t)written <= remaining) {
+                        strncpy(output_ptr, formatted, written);
+                        output_ptr += written;
+                        remaining -= written;
+                    }
+                    arg_idx++;
+                }
+            }
+        } else {
+            *output_ptr++ = *format_ptr++;
+            remaining--;
+        }
+    }
+    
+    *output_ptr = '\0';
+    strncpy(output, result, output_size - 1);
+    output[output_size - 1] = '\0';
+    
+    free(temp_format);
+    free(result);
+    return 0;
 }
 
 static int send_message(const ssdsplash_message_t *msg) {
@@ -131,7 +243,14 @@ int main(int argc, char *argv[]) {
         }
         
         msg.type = MSG_TYPE_TEXT;
-        strncpy(msg.data.text_msg.text, argv[optind], SSDSPLASH_MAX_TEXT_LEN - 1);
+        
+        char formatted_text[SSDSPLASH_MAX_TEXT_LEN];
+        if (format_text_with_args(formatted_text, sizeof(formatted_text), argv[optind], argc, argv, optind + 1) < 0) {
+            fprintf(stderr, "Error: Failed to format text\n");
+            return 1;
+        }
+        
+        strncpy(msg.data.text_msg.text, formatted_text, SSDSPLASH_MAX_TEXT_LEN - 1);
         msg.data.text_msg.text[SSDSPLASH_MAX_TEXT_LEN - 1] = '\0';
         msg.data.text_msg.line = line;
         

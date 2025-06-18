@@ -112,6 +112,12 @@ ssdsplash-send -t text -f /path/to/font.ttf -z 16 "Custom Font Text"
 # Display text on specific line
 ssdsplash-send -t text -l 1 "Starting services"
 
+# Formatted text with printf-style format strings
+ssdsplash-send -t text "Service %s returned %d" nginx 0
+ssdsplash-send -t text "Progress: %d/%d (%.1f%%)" 42 100 42.0
+ssdsplash-send -t text "Temperature: %.1f°C" 23.5
+ssdsplash-send -t text "User: %s, ID: %d, Score: %.2f" alice 1001 95.7
+
 # Show progress (42 out of 100)
 ssdsplash-send -t progress -v 42
 
@@ -131,6 +137,43 @@ ssdsplash-send -t clear
 ssdsplash-send -t quit
 ```
 
+### Printf-style Format Strings
+
+The text command supports printf-style format strings with arguments:
+
+**Supported format specifiers:**
+- `%s` - String
+- `%d`, `%i` - Signed integer
+- `%u` - Unsigned integer
+- `%x`, `%X` - Hexadecimal (lowercase/uppercase)
+- `%o` - Octal
+- `%f`, `%F` - Floating point
+- `%e`, `%E` - Scientific notation
+- `%g`, `%G` - Compact float format
+- `%c` - Character
+- `%%` - Literal percent sign
+
+**Shell integration examples:**
+```bash
+# Using shell variables
+SERVICE="nginx"
+EXIT_CODE=$?
+ssdsplash-send -t text "Service %s returned %d" "$SERVICE" "$EXIT_CODE"
+
+# Command substitution
+TEMP=$(cat /sys/class/thermal/thermal_zone0/temp)
+TEMP_C=$((TEMP / 1000))
+ssdsplash-send -t text "CPU: %d°C" "$TEMP_C"
+
+# Process monitoring
+PID=$(pgrep nginx)
+ssdsplash-send -t text "nginx PID: %d" "$PID"
+
+# File operations
+COUNT=$(ls /var/log/*.log | wc -l)
+ssdsplash-send -t text "Log files: %d" "$COUNT"
+```
+
 ## Integration with Boot Scripts
 
 Add to your boot scripts or systemd services:
@@ -139,13 +182,36 @@ Add to your boot scripts or systemd services:
 # Early boot - show logo
 ssdsplash-send -t img -s /etc/ssdsplash/boot-logo.png
 
-# Show boot progress
-ssdsplash-send -t text "Initializing hardware..."
+# Show boot progress with formatted strings
+HOSTNAME=$(hostname)
+ssdsplash-send -t text "Booting %s..." "$HOSTNAME"
 ssdsplash-send -t progress -v 25
 
-# During boot
-ssdsplash-send -t text "Loading kernel modules..."
+# Service monitoring during boot
+start_service() {
+    local service="$1"
+    ssdsplash-send -t text "Starting %s..." "$service"
+    systemctl start "$service"
+    local status=$?
+    if [ $status -eq 0 ]; then
+        ssdsplash-send -t text "Service %s: OK" "$service"
+    else
+        ssdsplash-send -t text "Service %s: FAILED (%d)" "$service" "$status"
+    fi
+    return $status
+}
+
+# Use in boot sequence
+start_service "networking"
+ssdsplash-send -t progress -v 50
+
+start_service "ssh"
 ssdsplash-send -t progress -v 75
+
+# System information
+UPTIME=$(uptime | cut -d' ' -f4-5 | sed 's/,//')
+LOAD=$(uptime | awk -F'load average:' '{print $2}' | cut -d',' -f1 | xargs)
+ssdsplash-send -t text "Up %s, load %.2f" "$UPTIME" "$LOAD"
 
 # When ready to start main application
 ssdsplash-send -t quit
