@@ -1,11 +1,16 @@
-# SSD1306 Splash Screen for Embedded Linux
+# ssdsplash
 
-A lightweight splash screen daemon for SSD1306 OLED displays (128x64 and 128x32) that can display boot progress and messages on embedded Linux systems like Raspberry Pi.
+A lightweight splash screen daemon for OLED and TFT displays that can display boot progress and messages on embedded Linux systems like Raspberry Pi.
+
+**Project URL:** https://github.com/DatanoiseTV/ssdsplash
 
 ## Features
 
-- Pure userland implementation using I2C
-- Support for 128x64 and 128x32 SSD1306 displays
+- Pure userland implementation using I2C and SPI
+- Support for multiple display types:
+  - SSD1306 OLED displays (128x64 and 128x32) via I2C
+  - SSH1106 OLED displays (128x64) via I2C
+  - ILI9341 TFT displays (240x320) via SPI
 - Unix socket communication for real-time updates
 - Text display with multiple lines
 - Built-in 5x7 bitmap font
@@ -14,15 +19,25 @@ A lightweight splash screen daemon for SSD1306 OLED displays (128x64 and 128x32)
 - Progress bar with percentage
 - Image display (PNG, JPEG, and other formats via stb_image)
 - Automatic image scaling and centering
-- Dithering for monochrome display
+- Dithering for monochrome displays
 - Early boot integration via systemd
-- Graceful shutdown to free I2C for other applications
+- Graceful shutdown to free I2C/SPI for other applications
 - Static linking for embedded deployment
+
+## Supported Displays
+
+| Display Type | Resolution | Interface | Notes |
+|--------------|------------|-----------|-------|
+| SSD1306      | 128x64     | I2C       | Most common OLED, default |
+| SSD1306      | 128x32     | I2C       | Smaller OLED variant |
+| SSH1106      | 128x64     | I2C       | Similar to SSD1306, different controller |
+| ILI9341      | 240x320    | SPI       | Color TFT display |
 
 ## Hardware Requirements
 
-- SSD1306 OLED display (128x64 or 128x32)
-- I2C connection (default: /dev/i2c-1)
+- One of the supported displays (see table above)
+- I2C connection (default: /dev/i2c-1) for OLED displays
+- SPI connection (default: /dev/spidev0.0) for TFT displays
 - Raspberry Pi or similar embedded Linux system
 
 ## Building
@@ -51,11 +66,17 @@ sudo ./install-buildroot.sh
 ### Starting the daemon manually
 
 ```bash
-# For 128x64 display (default)
+# For SSD1306 128x64 display (default)
 sudo ssdsplash
 
-# For 128x32 display
+# For SSD1306 128x32 display
 sudo ssdsplash -t 128x32
+
+# For SSH1106 128x64 display
+sudo ssdsplash -t ssh1106
+
+# For ILI9341 240x320 TFT display
+sudo ssdsplash -t ili9341
 
 # Custom I2C device
 sudo ssdsplash -d /dev/i2c-0
@@ -63,8 +84,20 @@ sudo ssdsplash -d /dev/i2c-0
 # Custom I2C address (default: 0x3C)
 sudo ssdsplash -a 0x3D
 
+# Custom SPI device for ILI9341
+sudo ssdsplash -t ili9341 -d /dev/spidev0.1
+
 # Combine options
 sudo ssdsplash -d /dev/i2c-1 -a 0x3D -t 128x32
+```
+
+### Command Line Options
+
+```
+  -d, --device DEVICE    Device path (default: /dev/i2c-1 for I2C, /dev/spidev0.0 for SPI)
+  -a, --address ADDR     I2C address: 0x3C or 0x3D (default: 0x3C)
+  -t, --type TYPE        Display type: 128x64, 128x32, ili9341, ssh1106 (default: 128x64)
+  -h, --help             Show this help
 ```
 
 ### Sending commands
@@ -94,7 +127,7 @@ ssdsplash-send -t img -s /path/to/splash.jpg
 # Clear screen
 ssdsplash-send -t clear
 
-# Shutdown daemon (frees I2C)
+# Shutdown daemon (frees I2C/SPI)
 ssdsplash-send -t quit
 ```
 
@@ -140,10 +173,10 @@ sudo /etc/init.d/S30ssdsplash restart
 
 ## Wiring
 
-For Raspberry Pi with SSD1306:
+### For Raspberry Pi with SSD1306/SSH1106 (I2C):
 
 ```
-SSD1306  ->  Raspberry Pi
+Display  ->  Raspberry Pi
 VCC      ->  3.3V (Pin 1)
 GND      ->  GND (Pin 6)
 SCL      ->  SCL (Pin 5)
@@ -156,19 +189,69 @@ sudo raspi-config
 # Interface Options -> I2C -> Enable
 ```
 
+### For Raspberry Pi with ILI9341 (SPI):
+
+```
+ILI9341  ->  Raspberry Pi
+VCC      ->  3.3V (Pin 1)
+GND      ->  GND (Pin 6)
+CS       ->  CE0 (Pin 24)
+RESET    ->  GPIO25 (Pin 22)
+DC       ->  GPIO24 (Pin 18)
+SDI      ->  MOSI (Pin 19)
+SCK      ->  SCLK (Pin 23)
+LED      ->  3.3V (Pin 1)
+SDO      ->  MISO (Pin 21)
+```
+
+Enable SPI:
+```bash
+sudo raspi-config
+# Interface Options -> SPI -> Enable
+```
+
 ## Configuration
 
 The daemon supports:
-- Display types: 128x64 (default), 128x32
-- I2C devices: /dev/i2c-1 (default), /dev/i2c-0, etc.
-- I2C addresses: 0x3C (default), 0x3D
-- Fonts: 
+- **Display types:** 128x64 (default), 128x32, ssh1106, ili9341
+- **I2C devices:** /dev/i2c-1 (default), /dev/i2c-0, etc.
+- **SPI devices:** /dev/spidev0.0 (default), /dev/spidev0.1, etc.
+- **I2C addresses:** 0x3C (default), 0x3D
+- **Fonts:** 
   - Built-in 5x7 bitmap font (default)
   - TrueType fonts (.ttf files) with configurable sizes
   - Automatic fallback to bitmap font if TrueType loading fails
-- Image formats: PNG, JPEG, BMP, TGA, and others (via stb_image)
-- Image processing: Automatic RGB to grayscale conversion with dithering
-- Scaling: Original size (centered) or scaled to fit display
+- **Image formats:** PNG, JPEG, BMP, TGA, and others (via stb_image)
+- **Image processing:** Automatic RGB to grayscale conversion with dithering (for monochrome displays)
+- **Scaling:** Original size (centered) or scaled to fit display
+
+## Display Type Details
+
+### SSD1306 (128x64, 128x32)
+- **Interface:** I2C
+- **Colors:** Monochrome (black/white)
+- **Common uses:** Small status displays, embedded systems
+- **Addresses:** Usually 0x3C or 0x3D
+
+### SSH1106 (128x64)
+- **Interface:** I2C  
+- **Colors:** Monochrome (black/white)
+- **Notes:** Similar to SSD1306 but uses different controller chip
+- **Differences:** Requires page-by-page data writing instead of bulk transfer
+
+### ILI9341 (240x320)
+- **Interface:** SPI
+- **Colors:** 16-bit color (65,536 colors)
+- **Common uses:** Larger displays, graphical interfaces
+- **Notes:** Much higher resolution and color capability
+
+## Testing
+
+Use the included test script to verify display support:
+
+```bash
+./test-displays.sh
+```
 
 ## Similar to psplash
 
